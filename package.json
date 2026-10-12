@@ -1,0 +1,38 @@
+{
+  "name": "baqlike-web",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev --host",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@fontsource/montserrat": "^5.3.0",
+    "@formkit/auto-animate": "^0.10.0",
+    "@nuxtjs/i18n": "^10.6.0",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@pinia/nuxt": "^1.0.2",
+    "@vant/nuxt": "^1.0.7",
+    "@vueuse/core": "^15.0.0",
+    "@vueuse/nuxt": "^15.0.0",
+    "canvas-confetti": "^1.9.4",
+    "firebase": "^13.0.0",
+    "lucide-vue-next": "^1.0.0",
+    "nuxt": "^4.6.0",
+    "pinia": "^4.0.3",
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "qrcode.vue": "^3.11.0",
+    "vant": "^4.10.2",
+    "vue": "^3.5.43",
+    "vue-router": "^5.3.1"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@vite-pwa/nuxt": "^1.1.1",
+    "typescript": "^7.0.2",
+    "vue-tsc": "^3.3.13"
+  }
+}

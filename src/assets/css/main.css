@@ -1,0 +1,304 @@
+@import '@fontsource/montserrat/400.css';
+@import '@fontsource/montserrat/500.css';
+@import '@fontsource/montserrat/600.css';
+@import '@fontsource/montserrat/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+:host {
+  --brand-purple: #6C3CE1;
+  --accent-blue: #3B82F6;
+  --van-primary-color: #6C3CE1;
+  --van-button-primary-background: #6C3CE1;
+  --van-button-primary-border-color: #6C3CE1;
+  --van-base-font: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  --van-font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Force Montserrat across all elements and form controls */
+*,
+*::before,
+*::after,
+html,
+body,
+button,
+input,
+textarea,
+select,
+.van-dialog,
+.van-toast,
+.van-popup,
+.van-button {
+  font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Preserve Vant icon font */
+.van-icon,
+.van-icon::before,
+.van-icon::after {
+  font-family: 'vant-icon' !important;
+}
+
+/* Native Telegram WebApp experience settings */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background-color: #F8F9FA;
+  color: #1F2937;
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Disable selection to emulate native app feel */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Telegram WebApp Isolated Scroll Container */
+.app-scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 16px));
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #020617;
+  color: #f8fafc;
+}
+
+/* Allow text selection inside user inputs */
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+/* Safe Area Inset Utility Classes */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-tabbar {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.top-safe {
+  top: env(safe-area-inset-top, 0px);
+}
+
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile full-height container taking into account iOS dynamic navbars */
+.app-viewport {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page fade transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* No scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Unified Vant Slide-up (Bottom Sheet) Design System */
+.van-popup--round {
+  border-top-left-radius: 1.5rem !important; /* rounded-3xl */
+  border-top-right-radius: 1.5rem !important;
+}
+
+.van-overlay {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+
+.van-popup__close-icon {
+  color: #94a3b8 !important;
+  font-size: 1.15rem !important;
+  top: 1.25rem !important;
+  right: 1.25rem !important;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.van-popup__close-icon:hover {
+  color: #64748b !important;
+  transform: scale(1.08);
+}
+
+.dark .van-popup__close-icon:hover {
+  color: #cbd5e1 !important;
+}
+
+/* Vant Toast Design System (Wider & Natural Word Wrap) */
+:root,
+body {
+  --van-toast-default-width: min(84vw, 300px);
+  --van-toast-max-width: min(88vw, 340px);
+}
+
+.van-toast {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  border-radius: 1.25rem !important; /* rounded-2xl */
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+  width: min(84vw, 300px) !important;
+  min-width: 260px !important;
+  max-width: 330px !important;
+  min-height: 100px !important;
+  padding: 18px 20px !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  text-align: center !important;
+}
+
+.van-toast--text {
+  width: fit-content !important;
+  min-width: 180px !important;
+  max-width: min(84vw, 320px) !important;
+  min-height: 0 !important;
+  padding: 12px 18px !important;
+}
+
+.van-toast__text {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.45 !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  margin-top: 10px !important;
+  letter-spacing: -0.01em !important;
+}
+
+.van-toast__icon {
+  font-size: 36px !important;
+}
+
+/* Vant Dialog Design System (Montserrat & Rounded 3xl Aesthetic) */
+.van-dialog {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  border-radius: 1.5rem !important; /* rounded-3xl (24px) */
+  max-width: 330px !important;
+  width: 86% !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.van-dialog__header {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.1rem !important;
+  letter-spacing: -0.01em;
+  padding-top: 1.5rem !important;
+}
+
+.van-dialog__message {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  padding: 0.75rem 1.5rem 1.5rem !important;
+  color: #475569 !important;
+}
+
+.van-dialog__footer {
+  border-top: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.van-dialog__confirm,
+.van-dialog__cancel {
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  height: 52px !important;
+}
+
+.dark .van-dialog {
+  background-color: #0f172a !important; /* slate-900 */
+  color: #f8fafc !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .van-dialog__header {
+  color: #f8fafc !important;
+}
+
+.dark .van-dialog__message {
+  color: #94a3b8 !important; /* slate-400 */
+}
+
+.dark .van-dialog__footer {
+  border-top-color: #1e293b !important;
+}
+
+.dark .van-dialog__confirm {
+  background-color: #0f172a !important;
+  color: #a78bfa !important;
+}
+
+.dark .van-dialog__cancel {
+  background-color: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+
