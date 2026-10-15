@@ -19,7 +19,6 @@ import {
   where,
   limit,
   getDocs,
-  serverTimestamp,
   type Unsubscribe
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from '@shared/api';
@@ -29,6 +28,14 @@ import type { UserFirebase, UserUi } from '@shared/types';
  * Преобразование Firebase DTO в UserUi модель фронтенда
  */
 export const mapUserFirebaseToUi = (id: string, data: Partial<UserFirebase>): UserUi => {
+  let avatarUrl = data.avatar_url ?? null;
+  if (!avatarUrl && typeof window !== 'undefined') {
+    const tgPhoto = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.photo_url;
+    if (tgPhoto) {
+      avatarUrl = tgPhoto;
+    }
+  }
+
   return {
     id,
     name: data.name || 'Staff',
@@ -37,12 +44,12 @@ export const mapUserFirebaseToUi = (id: string, data: Partial<UserFirebase>): Us
     shiftId: data.shift_id || (data as any).shiftId || null,
     telegramId: data.telegram_id ?? null,
     telegramUsername: data.telegram_username ?? null,
-    avatarUrl: data.avatar_url ?? null
+    avatarUrl
   };
 };
 
 /**
- * Получение первой доступной кофейни для привязки бариста
+ * Получение первого доступного заведения для привязки сотрудника
  */
 export const getFirstAvailableShopId = async (): Promise<string> => {
   try {
@@ -60,12 +67,12 @@ export const getFirstAvailableShopId = async (): Promise<string> => {
 
 /**
  * Синхронизация профиля пользователя с Firestore:
- * Если документа нет в /Users/{uid} — создает его через setDoc с дефолтными полями.
+ * Если документа нет в /Users/{uid} — разлогинивает сессию и выбрасывает ошибку USER_NOT_FOUND.
  * Если есть — возвращает актуальные данные.
  */
 export const syncUserProfile = async (
   userId: string,
-  initialData?: { name?: string; phone?: string; role?: string; shopId?: string }
+  _initialData?: { name?: string; phone?: string; role?: string; shopId?: string }
 ): Promise<UserUi> => {
   const firestore = getFirebaseFirestore();
   const userDocRef = doc(firestore, 'Users', userId);
@@ -73,49 +80,30 @@ export const syncUserProfile = async (
   try {
     const snapshot = await getDoc(userDocRef);
 
-    if (snapshot.exists()) {
-      const data = snapshot.data() as UserFirebase;
-      const userRole = data.role;
-      if (userRole && userRole !== 'staff') {
-        throw new Error('ROLE_FORBIDDEN_ADMIN');
+    if (!snapshot.exists()) {
+      const auth = getFirebaseAuth();
+      await signOut(auth);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('baqlike_user_session');
       }
-      return mapUserFirebaseToUi(snapshot.id, data);
+      throw new Error('USER_NOT_FOUND');
     }
 
-    // Если документ отсутствует, создаем его
-    const defaultShopId = initialData?.shopId || (await getFirstAvailableShopId());
-    const newUserDoc: Record<string, any> = {
-      name: initialData?.name || 'Бариста',
-      phone: initialData?.phone || '',
-      role: initialData?.role || 'barista',
-      shop_id: defaultShopId,
-      coffeeshop_id: defaultShopId,
-      shift_id: null,
-      created_at: serverTimestamp()
-    };
-
-    await setDoc(userDocRef, newUserDoc, { merge: true });
-
-    return {
-      id: userId,
-      name: newUserDoc.name,
-      role: newUserDoc.role,
-      coffeeShopId: defaultShopId,
-      shiftId: null
-    };
+    const data = snapshot.data() as UserFirebase;
+    const userRole = data.role;
+    if (userRole && userRole !== 'staff') {
+      throw new Error('ROLE_FORBIDDEN_ADMIN');
+    }
+    return mapUserFirebaseToUi(snapshot.id, data);
   } catch (err) {
-    if (err instanceof Error && err.message === 'ROLE_FORBIDDEN_ADMIN') {
+    if (
+      err instanceof Error &&
+      (err.message === 'ROLE_FORBIDDEN_ADMIN' || err.message === 'USER_NOT_FOUND')
+    ) {
       throw err;
     }
     console.warn(`Ошибка при синхронизации пользователя /Users/${userId}:`, err);
-    // Безопасный fallback
-    return {
-      id: userId,
-      name: initialData?.name || 'Бариста',
-      role: initialData?.role || 'Бариста',
-      coffeeShopId: initialData?.shopId || 'shop_astana_1',
-      shiftId: null
-    };
+    throw err;
   }
 };
 
@@ -286,8 +274,8 @@ export const loginViaTelegramApi = async (tgUser: {
       data.telegram_id = tgUser.id;
     }
 
-    // Автоподтягивание фото из Telegram, если аватар еще не был задан
-    if (!data.avatar_url && tgUser.photo_url) {
+    // Автоподтягивание фото из Telegram
+    if (tgUser.photo_url && data.avatar_url !== tgUser.photo_url) {
       updates.avatar_url = tgUser.photo_url;
       data.avatar_url = tgUser.photo_url;
     }

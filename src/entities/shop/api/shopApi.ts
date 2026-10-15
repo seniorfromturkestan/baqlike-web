@@ -1,13 +1,14 @@
 /**
  * src/entities/shop/api/shopApi.ts
- * API запросы кофейни из коллекции coffeeshops/{shopId}
+ * API запросы заведения из коллекции coffeeshops/{shopId}
  */
 import { doc, getDoc, collection, query, limit, getDocs } from 'firebase/firestore';
 import { getFirebaseFirestore } from '@shared/api';
+import { ALLOWED_RADIUS_METERS } from '@shared/config/constants';
 import type { ShopFirebase } from '@shared/types';
 
 /**
- * Получение данных кофейни по shopId с автоматическим fallback на первую доступную точку
+ * Получение данных заведения по shopId с автоматическим fallback на первое доступное заведение
  */
 export const fetchShopDocument = async (shopId?: string): Promise<ShopFirebase | null> => {
   const firestore = getFirebaseFirestore();
@@ -21,17 +22,17 @@ export const fetchShopDocument = async (shopId?: string): Promise<ShopFirebase |
         const data = snapshot.data();
         return {
           id: snapshot.id,
-          name: data.name || 'Кофейня BaqLike',
+          name: data.name || 'Заведение BaqLike',
           location: {
             latitude: data.location?.latitude ?? 51.1282,
             longitude: data.location?.longitude ?? 71.4305
           },
-          radius: data.radius ?? 50
+          radius: data.radius ?? ALLOWED_RADIUS_METERS
         };
       }
     }
 
-    // 2. Fallback: загрузка первой существующей кофейни из Firestore
+    // 2. Fallback: загрузка первого существующего заведения из Firestore
     const q = query(collection(firestore, 'coffeeshops'), limit(1));
     const fallbackSnap = await getDocs(q);
     if (!fallbackSnap.empty && fallbackSnap.docs[0]) {
@@ -39,12 +40,12 @@ export const fetchShopDocument = async (shopId?: string): Promise<ShopFirebase |
       const data = firstDoc.data();
       return {
         id: firstDoc.id,
-        name: data.name || 'Кофейня BaqLike',
+        name: data.name || 'Заведение BaqLike',
         location: {
           latitude: data.location?.latitude ?? 51.1282,
           longitude: data.location?.longitude ?? 71.4305
         },
-        radius: data.radius ?? 50
+        radius: data.radius ?? ALLOWED_RADIUS_METERS
       };
     }
   } catch (err) {
@@ -59,6 +60,6 @@ export const fetchShopDocument = async (shopId?: string): Promise<ShopFirebase |
       latitude: 51.1282,
       longitude: 71.4305
     },
-    radius: 50
+    radius: ALLOWED_RADIUS_METERS
   };
 };

@@ -40,30 +40,56 @@ interface Props {
 const props = defineProps<Props>();
 const { t, te } = useI18n();
 
+const normalizedStatus = computed<string>(() => {
+  if (props.status === 'Not_Done') return 'Active';
+  return props.status;
+});
+
 const localizedLabel = computed(() => {
-  const key = `status.${props.status}`;
+  if (normalizedStatus.value === 'Active') {
+    if (te('tasks.status.active')) return t('tasks.status.active');
+    if (te('status.Active')) return t('status.Active');
+    return 'Активная';
+  }
+  if (normalizedStatus.value === 'Overdue') {
+    if (te('tasks.status.overdue')) return t('tasks.status.overdue');
+    if (te('status.Overdue')) return t('status.Overdue');
+    return 'Просрочено';
+  }
+  if (normalizedStatus.value === 'ApprovedOverdue') {
+    if (te('tasks.status.approvedOverdue')) return t('tasks.status.approvedOverdue');
+    if (te('status.ApprovedOverdue')) return t('status.ApprovedOverdue');
+    return 'С опозданием';
+  }
+  const key = `status.${normalizedStatus.value}`;
   return te(key) ? t(key) : badgeTheme.value.label;
 });
 
 const badgeTheme = computed(() => {
-  return STATUS_THEMES[props.status] || {
-    label: props.status,
-    textColor: 'text-gray-700',
-    bgColor: 'bg-gray-100',
-    borderColor: 'border-gray-200',
-    dotColor: 'bg-gray-400'
+  const theme = STATUS_THEMES[normalizedStatus.value as keyof typeof STATUS_THEMES];
+  if (theme) return theme;
+  return {
+    label: normalizedStatus.value,
+    textColor: 'text-gray-700 dark:text-slate-300',
+    bgColor: 'bg-gray-100 dark:bg-slate-800',
+    borderColor: 'border-gray-200 dark:border-slate-700',
+    dotColor: 'bg-gray-400 dark:bg-slate-500'
   };
 });
 
 const statusIcon = computed(() => {
-  switch (props.status) {
+  switch (normalizedStatus.value) {
     case 'Approved':
       return CheckCircle2;
+    case 'ApprovedOverdue':
+      return AlertCircle;
     case 'In_Review':
       return Clock;
     case 'Rejected':
       return XCircle;
-    case 'Not_Done':
+    case 'Active':
+      return Clock;
+    case 'Overdue':
       return AlertCircle;
     case 'Open':
       return PlayCircle;

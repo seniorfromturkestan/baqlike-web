@@ -1,44 +1,22 @@
 <template>
   <div class="w-full space-y-4 select-none">
-    <!-- 1. Карточка профиля бариста -->
+    <!-- 1. Карточка профиля сотрудника -->
     <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-gray-100 dark:border-slate-800 shadow-sm text-center relative overflow-hidden transition-colors">
       <!-- Фон декорации -->
       <div class="absolute -top-12 -right-12 w-36 h-36 bg-purple-100/50 dark:bg-purple-900/20 rounded-full blur-2xl pointer-events-none" />
 
       <div class="relative z-10 flex flex-col items-center">
-        <!-- Аватар с поддержкой фото и загрузки -->
-        <div class="relative group cursor-pointer mb-3" @click="triggerAvatarUpload">
-          <div class="w-20 h-20 rounded-3xl overflow-hidden bg-gradient-to-tr from-brand to-accent text-white font-bold text-2xl flex items-center justify-center shadow-lg shadow-purple-500/20 border-2 border-white dark:border-slate-800 relative">
+        <!-- Аватар сотрудника (из Telegram или заглавная буква имени) -->
+        <div class="mb-3">
+          <div class="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-tr from-brand to-accent text-white font-bold text-2xl flex items-center justify-center shadow-lg shadow-purple-500/20 border-2 border-white dark:border-slate-800">
             <img
-              v-if="sessionStore.user?.avatarUrl"
-              :src="sessionStore.user.avatarUrl"
+              v-if="sessionStore.userAvatar"
+              :src="sessionStore.userAvatar"
               alt="Avatar"
               class="w-full h-full object-cover"
             >
             <span v-else>{{ sessionStore.userInitials }}</span>
-
-            <!-- Оверлей загрузки -->
-            <div
-              v-if="isUploadingAvatar"
-              class="absolute inset-0 bg-black/60 flex items-center justify-center text-white"
-            >
-              <RotateCw class="w-6 h-6 animate-spin" />
-            </div>
           </div>
-
-          <!-- Кнопка с иконкой камеры поверх аватара -->
-          <div class="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-brand text-white shadow-md border-2 border-white dark:border-slate-900 group-hover:scale-110 active:scale-95 transition">
-            <Camera class="w-3.5 h-3.5" />
-          </div>
-
-          <input
-            ref="avatarFileInputRef"
-            type="file"
-            accept="image/*"
-            class="hidden"
-            :disabled="isUploadingAvatar"
-            @change="handleAvatarFileSelected"
-          >
         </div>
 
         <h2 class="text-lg font-bold text-gray-900 dark:text-slate-100 leading-tight">
@@ -47,7 +25,7 @@
 
         <div class="flex items-center gap-1.5 mt-1">
           <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-brand dark:text-brand-300 font-semibold border border-purple-100 dark:border-purple-900/50">
-            {{ sessionStore.userRole }}
+            {{ displayRole }}
           </span>
         </div>
 
@@ -199,7 +177,7 @@
       safe-area-inset-bottom
       @close="closeQrModal"
     >
-      <div class="p-6 pt-5 text-center space-y-4 max-w-md mx-auto relative">
+      <div class="pl-4 pr-4 pb-4 text-center space-y-4 max-w-md mx-auto relative">
         <!-- Кнопка закрытия (X) -->
         <button
           type="button"
@@ -234,7 +212,7 @@
 
         <div class="space-y-1">
           <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">
-            {{ sessionStore.user?.name || $t('shift.barista') }}
+            {{ sessionStore.user?.name || $t('profile.role') }}
           </div>
           <div class="text-xs text-brand dark:text-brand-300 font-mono">
             UID: {{ sessionStore.user?.id || 'baqlike-employee' }}
@@ -260,8 +238,8 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { showFailToast, showSuccessToast, showDialog } from 'vant';
-import { MapPin, ShieldCheck, LogOut, Sun, Moon, Camera, Check, QrCode, Languages, X, RotateCw } from 'lucide-vue-next';
+import { showFailToast, showDialog } from 'vant';
+import { MapPin, ShieldCheck, LogOut, Sun, Moon, Camera, Check, QrCode, Languages, X } from 'lucide-vue-next';
 import QrcodeVue from 'qrcode.vue';
 import { AppButton } from '@shared/ui';
 import { useAppTheme, useTelegramHaptic } from '@shared/lib';
@@ -279,37 +257,16 @@ const shiftStore = useShiftStore();
 
 const isLoggingOut = ref(false);
 const isQrModalOpen = ref(false);
-const isUploadingAvatar = ref(false);
-const avatarFileInputRef = ref<HTMLInputElement | null>(null);
-
-const triggerAvatarUpload = () => {
-  if (isUploadingAvatar.value) return;
-  haptic.impact('light');
-  avatarFileInputRef.value?.click();
-};
-
-const handleAvatarFileSelected = async (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-
-  isUploadingAvatar.value = true;
-  haptic.impact('medium');
-  try {
-    await sessionStore.uploadAvatar(file);
-    showSuccessToast(t('profile.avatarUpdated', 'Фото профиля обновлено'));
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Ошибка загрузки аватара';
-    showFailToast(msg);
-  } finally {
-    isUploadingAvatar.value = false;
-    if (avatarFileInputRef.value) {
-      avatarFileInputRef.value.value = '';
-    }
-  }
-};
 
 const currentLocaleCode = computed(() => locale.value);
+
+const displayRole = computed(() => {
+  const role = sessionStore.userRole;
+  if (!role || role === 'staff' || role === 'barista' || role === 'Сотрудник' || role === 'Бариста') {
+    return t('profile.role');
+  }
+  return role;
+});
 
 const openQrModal = () => {
   haptic.impact('light');
@@ -340,14 +297,14 @@ const qrCodeData = computed(() => {
     uid: sessionStore.user?.id || 'unknown',
     name: sessionStore.user?.name || '',
     shopId: sessionStore.assignedShopId || '',
-    role: sessionStore.user?.role || 'barista',
+    role: sessionStore.user?.role || 'staff',
     timestamp: Date.now()
   });
 });
 
 const handleLogout = async () => {
-  // Проверка по ТЗ: если смена открыта, выход блокируется
-  if (shiftStore.isOpen || sessionStore.currentShiftId) {
+  // Проверка по ТЗ: если смена активна, выход блокируется
+  if (shiftStore.isShiftActive) {
     haptic.notification('warning');
     showDialog({
       title: t('profile.logoutWarningTitle'),
@@ -362,6 +319,7 @@ const handleLogout = async () => {
   isLoggingOut.value = true;
   try {
     await sessionStore.logout();
+    shiftStore.clearActiveShift();
     haptic.notification('success');
     router.replace('/auth');
   } catch (err: unknown) {

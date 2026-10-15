@@ -5,11 +5,12 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { TaskResultUi, TaskStatus } from '@shared/types';
-import { fetchTodayNotDoneTasks, subscribeToShopTasks } from '../api/taskApi';
+import { fetchTodayNotDoneTasks, fetchTodayRejectedTasksApi, subscribeToShopTasks } from '../api/taskApi';
 import type { Unsubscribe } from 'firebase/firestore';
 
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref<TaskResultUi[]>([]);
+  const rejectedTasks = ref<TaskResultUi[]>([]);
   const loading = ref<boolean>(false);
   const error = ref<string | null>(null);
 
@@ -24,7 +25,7 @@ export const useTaskStore = defineStore('task', () => {
   });
 
   const completedCount = computed<number>(() => {
-    return tasks.value.filter((t) => t.status !== 'Not_Done').length;
+    return tasks.value.filter((t) => t.status === 'Approved').length;
   });
 
   const progressPercent = computed<number>(() => {
@@ -40,12 +41,20 @@ export const useTaskStore = defineStore('task', () => {
     return tasks.value.filter((t) => t.status === 'Approved').length;
   });
 
+  const rejectedCount = computed<number>(() => {
+    return rejectedTasks.value.length;
+  });
+
+  const activeTasks = computed<TaskResultUi[]>(() => {
+    return tasks.value.filter((t) => t.status !== 'Approved' && t.status !== 'Rejected');
+  });
+
   const notDoneTasks = computed<TaskResultUi[]>(() => {
-    return tasks.value.filter((t) => t.status === 'Not_Done');
+    return tasks.value.filter((t) => t.status !== 'Approved' && t.status !== 'Rejected' && t.status !== 'In_Review');
   });
 
   const doneTasks = computed<TaskResultUi[]>(() => {
-    return tasks.value.filter((t) => t.status !== 'Not_Done');
+    return tasks.value.filter((t) => t.status === 'Approved' || t.status === 'In_Review');
   });
 
   // ==========================================
@@ -58,13 +67,26 @@ export const useTaskStore = defineStore('task', () => {
     loading.value = true;
     error.value = null;
     try {
-      const result = await fetchTodayNotDoneTasks(shopId);
-      tasks.value = result;
+      const [notDoneResult] = await Promise.all([
+        fetchTodayNotDoneTasks(shopId),
+        loadRejectedTasks(shopId)
+      ]);
+      tasks.value = notDoneResult;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки задач';
       error.value = message;
     } finally {
       loading.value = false;
+    }
+  };
+
+  const loadRejectedTasks = async (shopId: string): Promise<void> => {
+    if (!shopId) return;
+    try {
+      const result = await fetchTodayRejectedTasksApi(shopId);
+      rejectedTasks.value = result;
+    } catch (err: unknown) {
+      console.warn('Ошибка загрузки отклонённых задач:', err);
     }
   };
 
@@ -77,6 +99,9 @@ export const useTaskStore = defineStore('task', () => {
     }
 
     loading.value = true;
+    // Сразу же подтягиваем отклонённые задачи за сегодня
+    loadRejectedTasks(shopId);
+
     tasksUnsubscribe = subscribeToShopTasks(
       shopId,
       (updatedList) => {
@@ -113,12 +138,17 @@ export const useTaskStore = defineStore('task', () => {
     }
   };
 
+  const removeLocalTask = (taskId: string) => {
+    tasks.value = tasks.value.filter((t) => t.id !== taskId);
+  };
+
   const setTasks = (newTasks: TaskResultUi[]) => {
     tasks.value = newTasks;
   };
 
   return {
     tasks,
+    rejectedTasks,
     loading,
     error,
     totalCount,
@@ -126,12 +156,16 @@ export const useTaskStore = defineStore('task', () => {
     progressPercent,
     pendingApprovalCount,
     approvedCount,
+    rejectedCount,
+    activeTasks,
     notDoneTasks,
     doneTasks,
     loadTasks,
+    loadRejectedTasks,
     subscribeTasks,
     unsubscribeTasks,
     updateLocalTaskStatus,
+    removeLocalTask,
     setTasks
   };
 });

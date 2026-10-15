@@ -40,7 +40,47 @@
         </div>
       </div>
 
-      <!-- 1. Карточка отказа в доступе (аккаунт Telegram не найден в Users) -->
+      <!-- 1. Карточка отказа в доступе (аккаунт не зарегистрирован в Users) -->
+      <div
+        v-else-if="sessionStore.isUserNotFound"
+        class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-rose-100 dark:border-rose-950/40 shadow-sm space-y-6 text-center select-none transition-colors"
+      >
+        <div class="w-16 h-16 rounded-3xl bg-rose-50 dark:bg-rose-950/50 border border-rose-100 dark:border-rose-900/40 mx-auto flex items-center justify-center text-rose-500 dark:text-rose-400 shadow-sm">
+          <Lock class="w-8 h-8" />
+        </div>
+
+        <div class="space-y-2">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-slate-100 tracking-tight">
+            {{ $t('auth.userNotFoundTitle') }}
+          </h2>
+          <p class="text-xs text-gray-600 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+            {{ $t('auth.userNotFoundDesc') }}
+          </p>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <AppButton
+            variant="primary"
+            size="large"
+            class="w-full"
+            @click="handleRetryAfterNotFound"
+          >
+            {{ $t('auth.retry') }}
+          </AppButton>
+
+          <AppButton
+            v-if="isTelegramMode"
+            variant="secondary"
+            size="large"
+            class="w-full"
+            @click="handleCloseTelegram"
+          >
+            {{ $t('common.close') }}
+          </AppButton>
+        </div>
+      </div>
+
+      <!-- 2. Карточка отказа в доступе (аккаунт Telegram не найден в Users) -->
       <div
         v-else-if="sessionStore.isAccessDenied"
         class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-rose-100 dark:border-rose-950/40 shadow-sm space-y-6 text-center select-none"
@@ -101,23 +141,27 @@
         class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-gray-100 dark:border-slate-800 shadow-sm space-y-6 text-center select-none transition-colors"
       >
         <!-- Шапка -->
-        <div class="space-y-2">
-          <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand to-accent mx-auto flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-            <Coffee class="w-7 h-7" />
+        <div class="space-y-3">
+          <img
+            src="/logo-staff-baqlike.png"
+            alt="BaqLike Staff"
+            class="w-16 h-16 rounded-2xl shadow-lg shadow-purple-500/15 mx-auto object-contain"
+          >
+          <div class="space-y-1">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-slate-100 tracking-tight">
+              {{ $t('auth.title') }}
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">
+              {{ $t('auth.subtitle') }}
+            </p>
           </div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-slate-100 tracking-tight">
-            {{ $t('auth.title') }}
-          </h2>
-          <p class="text-xs text-gray-500 dark:text-slate-400">
-            {{ $t('auth.subtitle') }}
-          </p>
         </div>
 
         <!-- Превью аккаунта Telegram -->
         <div class="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-2xl border border-gray-100 dark:border-slate-700/60 flex items-center justify-center gap-2.5">
-          <div class="w-8 h-8 rounded-full bg-[#24A1DE]/15 text-[#24A1DE] flex items-center justify-center shrink-0">
-            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.62 4.57-1.9 5.09-1.91.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.19-.04.35z"/>
+          <div class="w-7 h-7 rounded-full bg-[#24A1DE] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <svg class="w-3.5 h-3.5 fill-current -translate-x-[0.5px]" viewBox="0 0 24 24">
+              <path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.313 4.693c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
             </svg>
           </div>
           <span class="text-xs font-semibold text-gray-800 dark:text-slate-200">
@@ -129,12 +173,12 @@
         <button
           type="button"
           :disabled="isChecking || sessionStore.loading"
-          class="w-full py-4 px-6 rounded-2xl bg-[#24A1DE] hover:bg-[#2092cb] active:scale-[0.98] text-white font-semibold text-sm flex items-center justify-center gap-3 shadow-lg shadow-sky-500/25 transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+          class="w-full py-4 px-6 rounded-2xl bg-[#24A1DE] hover:bg-[#2092cb] active:scale-[0.98] text-white font-semibold text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-sky-500/25 transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
           @click="handleTelegramLogin"
         >
           <RotateCw v-if="isChecking || sessionStore.loading" class="w-5 h-5 animate-spin" />
-          <svg v-else class="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.75 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.62 4.57-1.9 5.09-1.91.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.19-.04.35z"/>
+          <svg v-else class="w-5 h-5 fill-current shrink-0 -translate-x-[0.5px]" viewBox="0 0 24 24">
+            <path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.313 4.693c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
           </svg>
           <span>{{ $t('auth.loginViaTelegram') }}</span>
         </button>
@@ -157,7 +201,7 @@
       </div>
 
       <!-- Нижняя сноска о политике конфиденциальности -->
-      <div class="text-center mt-6">
+      <!-- <div class="text-center mt-6">
         <a
           href="https://baqlike-admin.netlify.app/privacy-policy"
           target="_blank"
@@ -166,7 +210,7 @@
         >
           {{ $t('auth.privacyPolicy') }}
         </a>
-      </div>
+      </div> -->
     </div>
   </div>
 </template>
@@ -174,7 +218,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { RotateCw, Lock, Coffee, ShieldAlert } from 'lucide-vue-next';
+import { RotateCw, Lock, ShieldAlert } from 'lucide-vue-next';
 import { AppButton } from '@shared/ui';
 import { useSessionStore } from '@entities/session';
 import { AuthEmailForm } from '@features/auth-by-email';
@@ -233,8 +277,17 @@ const handleOpenAdminBot = () => {
   }
 };
 
+const handleRetryAfterNotFound = () => {
+  sessionStore.isUserNotFound = false;
+  if (isTelegramMode.value) {
+    handleTelegramLogin();
+  }
+};
+
 const handleCloseTelegram = () => {
   sessionStore.isAdminForbidden = false;
+  sessionStore.isUserNotFound = false;
+  sessionStore.isAccessDenied = false;
   if (typeof window !== 'undefined') {
     const tg = (window as any).Telegram?.WebApp;
     if (typeof tg?.close === 'function') {
@@ -248,7 +301,7 @@ const handleSuccess = () => {
 };
 
 onMounted(() => {
-  if (sessionStore.isAuthenticated) {
+  if (sessionStore.isAuthenticated && !sessionStore.isUserNotFound && !sessionStore.isAdminForbidden && !sessionStore.isAccessDenied) {
     router.replace('/shift');
   }
 });

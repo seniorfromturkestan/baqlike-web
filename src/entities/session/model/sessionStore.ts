@@ -49,6 +49,8 @@ export const useSessionStore = defineStore('session', () => {
   const error = ref<string | null>(null);
   const isAccessDenied = ref<boolean>(false);
   const isAdminForbidden = ref<boolean>(false);
+  const isUserNotFound = ref<boolean>(false);
+  const isInitialized = ref<boolean>(false);
 
   let userUnsubscribe: Unsubscribe | null = null;
   let authUnsubscribe: Unsubscribe | null = null;
@@ -69,15 +71,19 @@ export const useSessionStore = defineStore('session', () => {
     return user.value?.shiftId || null;
   });
 
-  const userInitials = computed(() => {
-    if (!user.value?.name) return 'BK';
-    const parts = user.value.name.trim().split(/\s+/);
-    const first = parts[0];
-    const second = parts[1];
-    if (first && second && first[0] && second[0]) {
-      return (first[0] + second[0]).toUpperCase();
+  const userAvatar = computed<string | null>(() => {
+    if (user.value?.avatarUrl) return user.value.avatarUrl;
+    if (typeof window !== 'undefined') {
+      const tgPhoto = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.photo_url;
+      if (tgPhoto) return tgPhoto;
     }
-    return user.value.name.substring(0, 2).toUpperCase();
+    return null;
+  });
+
+  const userInitials = computed(() => {
+    if (!user.value?.name) return 'B';
+    const trimmed = user.value.name.trim();
+    return (trimmed.charAt(0) || 'B').toUpperCase();
   });
 
   // ==========================================
@@ -117,6 +123,13 @@ export const useSessionStore = defineStore('session', () => {
           }
           user.value = updated;
           saveSession(updated);
+        } else {
+          user.value = null;
+          isAuthenticated.value = false;
+          isUserNotFound.value = true;
+          error.value = 'USER_NOT_FOUND';
+          saveSession(null);
+          signOutApi().catch(() => {});
         }
         loading.value = false;
       },
@@ -134,41 +147,76 @@ export const useSessionStore = defineStore('session', () => {
   /**
    * Инициализация слушателя сессии при старте приложения
    */
-  const initSession = () => {
-    // Если сессия уже была восстановлена из localStorage — сразу запускаем подписку
+  const initSession = async (): Promise<void> => {
+    // 1. Если сессия уже была восстановлена из localStorage — сразу запускаем подписку
     if (user.value?.id && !userUnsubscribe) {
       startUserSubscription(user.value.id);
     }
 
-    if (authUnsubscribe) return;
+    if (authUnsubscribe) {
+      isInitialized.value = true;
+      return;
+    }
 
-    authUnsubscribe = subscribeAuthState(async (firebaseUser) => {
-      if (firebaseUser) {
-        // Если уже есть пользователь из Telegram или кэша с ID, не перезаписываем дефолтным
-        if (!user.value?.id) {
-          try {
-            const synced = await syncUserProfile(firebaseUser.uid, {
-              name: firebaseUser.displayName || 'Staff',
-              phone: firebaseUser.phoneNumber || ''
-            });
-            if (synced.role && synced.role !== 'staff') {
-              isAdminForbidden.value = true;
-              error.value = 'ROLE_FORBIDDEN_ADMIN';
-              await signOutApi();
-              user.value = null;
-              isAuthenticated.value = false;
-              saveSession(null);
+    return new Promise((resolve) => {
+      let resolved = false;
+      const done = () => {
+        if (!resolved) {
+          resolved = true;
+          isInitialized.value = true;
+          resolve();
+        }
+      };
+
+      // Предохранительный таймаут (2000 мс) для исключения бесконечной загрузки
+      const timer = setTimeout(done, 2000);
+
+      authUnsubscribe = subscribeAuthState(async (firebaseUser) => {
+        try {
+          if (firebaseUser) {
+            if (firebaseUser.isAnonymous) {
+              done();
               return;
             }
-            user.value = synced;
-            isAuthenticated.value = true;
-            saveSession(synced);
-            startUserSubscription(firebaseUser.uid);
-          } catch (syncErr) {
-            console.warn('[Session] Initial sync error:', syncErr);
+
+            // Если уже есть пользователь из Telegram или кэша с ID, не перезаписываем дефолтным
+            if (!user.value?.id) {
+              try {
+                const synced = await syncUserProfile(firebaseUser.uid, {
+                  name: firebaseUser.displayName || 'Staff',
+                  phone: firebaseUser.phoneNumber || ''
+                });
+                if (synced.role && synced.role !== 'staff') {
+                  isAdminForbidden.value = true;
+                  error.value = 'ROLE_FORBIDDEN_ADMIN';
+                  await signOutApi();
+                  user.value = null;
+                  isAuthenticated.value = false;
+                  saveSession(null);
+                  done();
+                  return;
+                }
+                user.value = synced;
+                isAuthenticated.value = true;
+                saveSession(synced);
+                startUserSubscription(firebaseUser.uid);
+              } catch (syncErr: unknown) {
+                console.warn('[Session] Initial sync error:', syncErr);
+                if (syncErr instanceof Error && syncErr.message === 'USER_NOT_FOUND') {
+                  isUserNotFound.value = true;
+                  error.value = 'USER_NOT_FOUND';
+                  user.value = null;
+                  isAuthenticated.value = false;
+                  saveSession(null);
+                }
+              }
+            }
           }
+        } finally {
+          clearTimeout(timer);
+          done();
         }
-      }
+      });
     });
   };
 
@@ -187,6 +235,7 @@ export const useSessionStore = defineStore('session', () => {
     error.value = null;
     isAccessDenied.value = false;
     isAdminForbidden.value = false;
+    isUserNotFound.value = false;
 
     try {
       const profile = await loginViaTelegramApi({
@@ -241,6 +290,7 @@ export const useSessionStore = defineStore('session', () => {
     error.value = null;
     isAccessDenied.value = false;
     isAdminForbidden.value = false;
+    isUserNotFound.value = false;
 
     try {
       const firebaseUser = await loginWithEmailApi(email, pass);
@@ -270,6 +320,15 @@ export const useSessionStore = defineStore('session', () => {
         saveSession(null);
         throw err;
       }
+      if (err instanceof Error && err.message === 'USER_NOT_FOUND') {
+        isUserNotFound.value = true;
+        error.value = 'USER_NOT_FOUND';
+        await signOutApi();
+        user.value = null;
+        isAuthenticated.value = false;
+        saveSession(null);
+        throw err;
+      }
       const message = err instanceof Error ? err.message : 'Ошибка авторизации';
       error.value = message;
       throw err;
@@ -279,13 +338,9 @@ export const useSessionStore = defineStore('session', () => {
   };
 
   /**
-   * Выход из системы с проверкой незакрытой смены
+   * Выход из системы
    */
   const logout = async (): Promise<void> => {
-    if (user.value?.shiftId) {
-      throw new Error('Чтобы выйти вы должны завершить смену');
-    }
-
     loading.value = true;
     try {
       if (userUnsubscribe) {
@@ -295,6 +350,9 @@ export const useSessionStore = defineStore('session', () => {
       await signOutApi();
       user.value = null;
       isAuthenticated.value = false;
+      isUserNotFound.value = false;
+      isAccessDenied.value = false;
+      isAdminForbidden.value = false;
       saveSession(null);
     } finally {
       loading.value = false;
@@ -330,13 +388,16 @@ export const useSessionStore = defineStore('session', () => {
   return {
     user,
     isAuthenticated,
+    isInitialized,
     loading,
     error,
     isAccessDenied,
     isAdminForbidden,
+    isUserNotFound,
     userRole,
     assignedShopId,
     currentShiftId,
+    userAvatar,
     userInitials,
     initSession,
     loginViaTelegram,

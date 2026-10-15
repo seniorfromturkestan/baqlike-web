@@ -39,16 +39,16 @@
           >
             {{ task.type === 'checkbox' ? $t('tasks.checkbox') : $t('tasks.photoReport') }}
           </span>
-          <StatusBadge :status="task.status" />
+          <StatusBadge :status="taskDisplayStatus" />
         </div>
         <h3 class="text-base font-bold text-gray-900 dark:text-slate-100 leading-snug">
           {{ task.title }}
         </h3>
       </div>
 
-      <!-- Комментарий ревьюера (если есть) -->
+      <!-- Комментарий ревьюера (если есть и задача не отклонена) -->
       <div
-        v-if="task.reviewComment"
+        v-if="task.reviewComment && task.status !== 'Rejected'"
         class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-xl text-xs text-amber-800 dark:text-amber-200 space-y-0.5"
       >
         <span class="font-semibold">{{ $t('tasks.reviewerComment') }}</span>
@@ -57,9 +57,55 @@
 
       <!-- Содержимое задачи -->
       <div class="space-y-3 pt-1">
+        <!-- Сценарий 0: Задача ОТКЛОНЕНА (Строго Read-Only) -->
+        <div
+          v-if="task.status === 'Rejected'"
+          class="p-4 bg-rose-50/50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-2xl space-y-4"
+        >
+          <!-- Блок с причиной отклонения -->
+          <div
+            v-if="task.reviewComment"
+            class="p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs text-rose-900 dark:text-rose-200 space-y-1 shadow-xs"
+          >
+            <span class="font-bold text-rose-700 dark:text-rose-400">{{ $t('tasks.rejectionReason') }}:</span>
+            <p class="leading-relaxed">{{ task.reviewComment }}</p>
+          </div>
+
+          <!-- Превью фото без обрезки (если прикреплено) -->
+          <div
+            v-if="task.photoUrl"
+            class="w-full max-h-[55vh] flex items-center justify-center bg-slate-100/60 dark:bg-slate-800/60 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 relative p-1"
+          >
+            <!-- Скелетон во время загрузки -->
+            <div
+              v-if="isImageLoading"
+              class="w-full h-48 flex flex-col items-center justify-center gap-2 animate-pulse"
+            >
+              <van-skeleton-image class="!w-12 !h-12 text-slate-300 dark:text-slate-600" />
+            </div>
+
+            <!-- Натуральное фото без обрезки -->
+            <img
+              v-show="!isImageLoading"
+              :src="task.photoUrl"
+              :alt="$t('tasks.photoReport')"
+              class="max-h-[55vh] w-auto max-w-full object-contain rounded-xl transition-opacity duration-300"
+              @load="isImageLoading = false"
+            >
+          </div>
+
+          <button
+            type="button"
+            class="w-full py-3 px-4 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 font-semibold text-xs active:scale-98 transition"
+            @click="handleClose"
+          >
+            {{ $t('common.close') }}
+          </button>
+        </div>
+
         <!-- Сценарий 1: Задача уже ВЫПОЛНЕНА -->
         <div
-          v-if="task.status !== 'Not_Done'"
+          v-else-if="task.status === 'Approved' || task.status === 'In_Review'"
           class="p-4 bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/60 rounded-2xl text-center space-y-3"
         >
           <p class="text-xs text-gray-600 dark:text-slate-300">
@@ -167,11 +213,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { CheckCircle, UploadCloud, X } from 'lucide-vue-next';
 import { AppButton, StatusBadge, PhotoUploader } from '@shared/ui';
 import { useTelegramHaptic } from '@shared/lib';
-import type { TaskResultUi } from '@shared/types';
+import type { TaskResultUi, StatusBadgeType } from '@shared/types';
+import { getTaskDisplayStatus } from '@entities/task';
 import { useCompleteTask } from '../model/useCompleteTask';
 
 interface Props {
@@ -190,6 +237,11 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'completed', task: TaskResultUi): void;
 }>();
+
+const taskDisplayStatus = computed<StatusBadgeType>(() => {
+  if (!props.task) return 'Active';
+  return getTaskDisplayStatus(props.task);
+});
 
 const haptic = useTelegramHaptic();
 const { isSubmitting, uploadProgress, executeCheckboxTask, executePhotoTask } = useCompleteTask();

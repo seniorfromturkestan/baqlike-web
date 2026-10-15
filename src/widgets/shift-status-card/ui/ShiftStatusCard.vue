@@ -1,7 +1,7 @@
 <template>
   <div class="w-full space-y-4 select-none">
     <!-- 1. Состояние: ДО СМЕНЫ (Смена закрыта) -->
-    <div v-if="!shiftStore.isOpen" class="space-y-4">
+    <div v-if="!shiftStore.isShiftActive" class="space-y-4">
       <!-- Баннер готовности -->
       <div class="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
         <div class="relative z-10 space-y-1">
@@ -40,7 +40,6 @@
               <RotateCw class="w-3.5 h-3.5" :class="isLocating ? 'animate-spin text-brand' : ''" />
             </button>
           </div>
-          <span class="text-[11px] text-gray-400 dark:text-slate-500">{{ $t('shift.gpsThreshold') }}</span>
         </div>
 
         <GeoIndicator
@@ -48,6 +47,7 @@
           :is-allowed="isAllowed"
           :loading="isLocating"
           :accuracy-meters="realAccuracy"
+          :allowed-radius-meters="allowedRadius"
         />
       </div>
 
@@ -72,11 +72,11 @@
             <h2 class="text-lg font-bold text-gray-900 dark:text-slate-100">
               {{ shopStore.shopName }}
             </h2>
-            <div class="flex items-center gap-2 mt-1">
+            <!-- <div class="flex items-center gap-2 mt-1">
               <div class="w-5 h-5 rounded-full overflow-hidden bg-gradient-to-tr from-brand to-accent text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                 <img
-                  v-if="sessionStore.user?.avatarUrl"
-                  :src="sessionStore.user.avatarUrl"
+                  v-if="sessionStore.userAvatar"
+                  :src="sessionStore.userAvatar"
                   alt="Avatar"
                   class="w-full h-full object-cover"
                 >
@@ -85,7 +85,7 @@
               <p class="text-xs text-gray-400 dark:text-slate-500">
                 {{ $t('shift.barista') }}: <span class="font-medium text-gray-700 dark:text-slate-300">{{ sessionStore.user?.name }}</span>
               </p>
-            </div>
+            </div> -->
           </div>
 
           <!-- Живой таймер смены -->
@@ -120,6 +120,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { Coffee, RotateCw } from 'lucide-vue-next';
 import { GeoIndicator } from '@shared/ui';
+import { ALLOWED_RADIUS_METERS } from '@shared/config/constants';
 import { formatTime } from '@shared/lib/date';
 import { getBrowserLocation, calculateDistance, validateCheckInRadius } from '@shared/lib/geo';
 import { useSessionStore } from '@entities/session';
@@ -136,6 +137,8 @@ const sessionStore = useSessionStore();
 const shopStore = useShopStore();
 const shiftStore = useShiftStore();
 
+const allowedRadius = computed(() => shopStore.currentShop?.radius || ALLOWED_RADIUS_METERS);
+
 const realDistance = ref<number | null>(null);
 const isAllowed = ref<boolean>(false);
 const realAccuracy = ref<number | null>(null);
@@ -148,7 +151,7 @@ const updateLocation = async () => {
     const { coordinates, accuracy } = await getBrowserLocation();
     const shopCoords = shopStore.shopCoordinates || { latitude: 51.1282, longitude: 71.4305 };
     const distance = calculateDistance(coordinates, shopCoords);
-    const validation = validateCheckInRadius(coordinates, shopCoords);
+    const validation = validateCheckInRadius(coordinates, shopCoords, sessionStore.user?.name, allowedRadius.value);
 
     realDistance.value = distance;
     isAllowed.value = validation.canCheckIn;
@@ -164,7 +167,7 @@ const updateLocation = async () => {
 };
 
 onMounted(() => {
-  if (!shiftStore.isOpen) {
+  if (!shiftStore.isShiftActive) {
     updateLocation();
   }
 });

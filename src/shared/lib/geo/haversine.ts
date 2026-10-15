@@ -1,6 +1,6 @@
 /**
  * src/shared/lib/geo/haversine.ts
- * Чистые утилиты георасчетов по формуле гаверсинусов и валидации радиуса кофейни
+ * Чистые утилиты георасчетов по формуле гаверсинусов и валидации радиуса заведения
  */
 import { EARTH_RADIUS_METERS, ALLOWED_RADIUS_METERS } from '../../config/constants';
 import type { Coordinates, FirestoreGeoPoint, LocationCheckResult } from '../../types';
@@ -59,9 +59,9 @@ export const isWithinRadius = (
 /**
  * Валидация возможности начала смены с учетом допустимого радиуса и исключения для тестового аккаунта
  * @param userCoords Координаты устройства сотрудника
- * @param shopCoords Координаты кофейни
+ * @param shopCoords Координаты заведения
  * @param userName Имя сотрудника (если "Test", радиус игнорируется)
- * @param allowedRadiusMeters Порог радиуса в метрах (по умолчанию 50.0)
+ * @param allowedRadiusMeters Порог радиуса в метрах (по умолчанию 150.0)
  */
 export const validateCheckInRadius = (
   userCoords: Coordinates | FirestoreGeoPoint,

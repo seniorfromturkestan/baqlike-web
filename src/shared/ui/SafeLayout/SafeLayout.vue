@@ -6,8 +6,8 @@
     <!-- Subheader Slot (контекстная плашка страницы, например аватар или заголовок раздела) -->
     <div
       v-if="$slots.header"
-      class="w-full bg-white/95 dark:bg-[#0B132B]/95 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0 z-10"
-      :class="showHeader ? 'pt-[calc(max(env(safe-area-inset-top),12px)+44px)]' : ''"
+      class="safe-layout-subheader w-full bg-white/95 dark:bg-[#0B132B]/95 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.03)] shrink-0 z-10"
+      :class="{ 'has-app-header': showHeader }"
     >
       <div class="w-full max-w-md mx-auto">
         <slot name="header" />
@@ -18,7 +18,7 @@
     <main
       class="app-scroll-container flex-1 w-full max-w-md mx-auto px-4"
       :class="[
-        !$slots.header && showHeader ? 'pt-[calc(max(env(safe-area-inset-top),12px)+44px)]' : 'pt-4',
+        !$slots.header && showHeader ? 'content-with-header' : 'pt-4',
         hasFooter || hasTabbar ? 'pb-tabbar' : 'pb-safe',
         contentClass
       ]"
@@ -59,3 +59,13 @@ const props = withDefaults(defineProps<Props>(), {
 const slots = useSlots();
 const hasFooter = computed(() => Boolean(slots.footer));
 </script>
+
+<style scoped>
+.safe-layout-subheader.has-app-header {
+  padding-top: calc(var(--tg-safe-top) + var(--tg-header-height));
+}
+
+.content-with-header {
+  padding-top: calc(var(--tg-safe-top) + var(--tg-header-height) + 12px);
+}
+</style>

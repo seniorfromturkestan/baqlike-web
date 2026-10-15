@@ -12,7 +12,6 @@ import {
   where,
   getDocs,
   onSnapshot,
-  serverTimestamp,
   type Unsubscribe
 } from 'firebase/firestore';
 import { getFirebaseFirestore } from '@shared/api';
@@ -122,24 +121,22 @@ export const createShiftApi = async (payload: CheckInPayload): Promise<string> =
   const firestore = getFirebaseFirestore();
   const shiftsRef = collection(firestore, 'coffeeshops', payload.shopId, 'shifts');
 
-  const nowIsoDate = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+  const todayDateString = new Date().toISOString().slice(0, 10);
   const checkInData: Record<string, any> = {
-    time: serverTimestamp(),
-    timestamp: payload.checkInTimestamp || Date.now()
+    latitude: payload.latitude ?? 0,
+    longitude: payload.longitude ?? 0,
+    timestamp: payload.checkInTimestamp || now
   };
-  if (payload.latitude !== undefined && payload.longitude !== undefined) {
-    checkInData.latitude = payload.latitude;
-    checkInData.longitude = payload.longitude;
-  }
 
   const shiftDocData: Record<string, any> = {
-    user_id: payload.userId,
-    user_name: payload.userName || 'Бариста',
     check_in: checkInData,
     check_out: null,
+    created_at: now,
     status: 'open',
-    date: nowIsoDate,
-    created_at: serverTimestamp()
+    user_id: payload.userId,
+    user_name: payload.userName || 'Сотрудник',
+    date: todayDateString
   };
 
   const docRef = await addDoc(shiftsRef, shiftDocData);
@@ -164,21 +161,19 @@ export const closeShiftApi = async (payload: CheckOutPayload): Promise<void> => 
   const firestore = getFirebaseFirestore();
   const shiftRef = doc(firestore, 'coffeeshops', payload.shopId, 'shifts', payload.shiftId);
 
+  const now = Date.now();
   const checkOutData: Record<string, any> = {
-    time: serverTimestamp(),
-    timestamp: payload.checkOutTimestamp || Date.now()
+    latitude: payload.latitude ?? 0,
+    longitude: payload.longitude ?? 0,
+    timestamp: payload.checkOutTimestamp || now
   };
-  if (payload.latitude !== undefined && payload.longitude !== undefined) {
-    checkOutData.latitude = payload.latitude;
-    checkOutData.longitude = payload.longitude;
-  }
 
   await setDoc(
     shiftRef,
     {
       check_out: checkOutData,
       status: 'closed',
-      updated_at: serverTimestamp()
+      updated_at: now
     },
     { merge: true }
   );

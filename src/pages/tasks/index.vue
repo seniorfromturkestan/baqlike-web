@@ -13,7 +13,7 @@
         </div>
 
         <ShiftDurationTimer
-          v-if="shiftStore.isOpen"
+          v-if="shiftStore.isShiftActive"
           :check-in="shiftStore.activeShift?.checkIn"
         />
       </div>
@@ -22,18 +22,33 @@
     <!-- Основной контент с Pull-to-Refresh -->
     <van-pull-refresh
       v-model="isRefreshing"
+      :pulling-text="$t('common.pullToRefresh')"
+      :loosing-text="$t('common.releaseToRefresh')"
+      :loading-text="$t('common.loading')"
+      :success-text="$t('common.refreshSuccess')"
       class="min-h-[calc(100vh-140px)]"
       @refresh="onRefresh"
     >
       <div class="space-y-4 pb-8">
         <!-- Заглушка, если смена еще НЕ открыта -->
         <div
-          v-if="!shiftStore.isOpen"
+          v-if="!shiftStore.isShiftActive"
           class="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-100 dark:border-slate-800 shadow-sm text-center space-y-4 my-6 transition-colors"
         >
-          <div class="w-16 h-16 mx-auto rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-brand dark:text-brand-300 flex items-center justify-center">
-            <Clock class="w-8 h-8 text-brand dark:text-brand-300 animate-pulse" />
-          </div>
+          <client-only>
+            <div class="flex justify-center items-center">
+              <Vue3Lottie
+                :animation-data="noShiftsAnimation"
+                :height="140"
+                :width="140"
+                :loop="true"
+                :auto-play="true"
+              />
+            </div>
+            <template #fallback>
+              <div class="w-[140px] h-[140px] mx-auto" />
+            </template>
+          </client-only>
           <div class="space-y-1">
             <h2 class="text-base font-bold text-gray-900 dark:text-slate-100">
               {{ $t('shift.shiftNotStarted') }}
@@ -61,7 +76,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Clock } from 'lucide-vue-next';
+import noShiftsAnimation from '@/assets/animations/no-shifts.json';
 import { SafeLayout, AppButton } from '@shared/ui';
 import { useTelegramHaptic } from '@shared/lib';
 import { useSessionStore } from '@entities/session';
@@ -80,6 +95,7 @@ const isRefreshing = ref(false);
 onMounted(() => {
   const shopId = sessionStore.assignedShopId || '10';
   taskStore.subscribeTasks(shopId);
+  taskStore.loadRejectedTasks(shopId);
 });
 
 const onRefresh = async () => {
@@ -87,7 +103,10 @@ const onRefresh = async () => {
   try {
     const shopId = sessionStore.assignedShopId || '10';
     taskStore.subscribeTasks(shopId);
-    await taskStore.loadTasks(shopId);
+    await Promise.allSettled([
+      taskStore.loadTasks(shopId),
+      taskStore.loadRejectedTasks(shopId)
+    ]);
   } finally {
     isRefreshing.value = false;
   }

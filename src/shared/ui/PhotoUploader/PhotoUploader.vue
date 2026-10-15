@@ -125,7 +125,7 @@
           class="w-full h-full object-cover"
         />
 
-        <!-- Рамка видоискателя для фокусировки бариста -->
+        <!-- Рамка видоискателя для фокусировки сотрудника -->
         <div class="absolute inset-8 rounded-3xl border-2 border-white/40 pointer-events-none flex flex-col justify-between p-4">
           <div class="flex justify-between">
             <div class="w-6 h-6 border-t-2 border-l-2 border-brand-400" />

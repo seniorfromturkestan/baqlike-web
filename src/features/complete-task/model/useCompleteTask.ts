@@ -37,27 +37,45 @@ export const useCompleteTask = () => {
     try {
       const userId = sessionStore.user.id;
       const userName = sessionStore.user.name;
+      const now = Date.now();
+      const deadline = Number((task as any).expected_finish_time || task.expectedFinishTime || 0);
+      const isOverdue = deadline > 0 && now > deadline;
+      const delayMinutes = isOverdue ? Math.round((now - deadline) / 60000) : 0;
 
-      // 1. Обновление в Firestore (статус Approved выставляется сразу по ТЗ)
-      await completeCheckboxTaskApi(shopId, task.id, userId, userName);
+      // 1. Обновление статуса в Firestore
+      await completeCheckboxTaskApi(shopId, task, { uid: userId, name: userName });
 
-      // 2. Локальное обновление
+      // 2. Локальное обновление стора
       taskStore.updateLocalTaskStatus(task.id, 'Approved', {
         userId,
         userName,
-        actualFinishTime: Date.now()
+        actualFinishTime: now,
+        isOverdue,
+        is_overdue: isOverdue,
+        delayMinutes,
+        delay_minutes: delayMinutes
       });
 
       showSuccessToast('Задача выполнена!');
       return true;
     } catch (err: unknown) {
+      console.warn('Fallback local task execution:', err);
       // Оптимистичное обновление для демо, если Firestore правила в тесте закрыты
       const userId = sessionStore.user.id;
       const userName = sessionStore.user.name;
+      const now = Date.now();
+      const deadline = Number((task as any).expected_finish_time || task.expectedFinishTime || 0);
+      const isOverdue = deadline > 0 && now > deadline;
+      const delayMinutes = isOverdue ? Math.round((now - deadline) / 60000) : 0;
+
       taskStore.updateLocalTaskStatus(task.id, 'Approved', {
         userId,
         userName,
-        actualFinishTime: Date.now()
+        actualFinishTime: now,
+        isOverdue,
+        is_overdue: isOverdue,
+        delayMinutes,
+        delay_minutes: delayMinutes
       });
       showSuccessToast('Задача выполнена (локально)');
       return true;

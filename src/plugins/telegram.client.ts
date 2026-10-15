@@ -15,6 +15,11 @@ export default defineNuxtPlugin(() => {
     tg.ready();
     tg.expand();
 
+    // Определение платформы: на Android системная панель Telegram перекрывает хедер
+    if (tg.platform === 'android') {
+      document.documentElement.classList.add('platform-android');
+    }
+
     // Защита от схлопывания при свайпе вниз (Telegram 7.7+)
     if (typeof tg.disableVerticalSwipes === 'function') {
       tg.disableVerticalSwipes();

@@ -17,6 +17,15 @@
   --van-base-font: 'Montserrat', system-ui, -apple-system, sans-serif !important;
   --van-font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
   font-family: 'Montserrat', system-ui, -apple-system, sans-serif !important;
+
+  /* Telegram Safe Area Top & Header Variables */
+  --tg-safe-top: max(env(safe-area-inset-top, 0px), 16px);
+  --tg-header-height: 48px;
+}
+
+.platform-android,
+html.platform-android {
+  --tg-safe-top: max(env(safe-area-inset-top, 0px), 36px);
 }
 
 /* Force Montserrat across all elements and form controls */
@@ -73,6 +82,10 @@ body {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(64px + env(safe-area-inset-bottom, 16px));
+}
+
+.app-scroll-container.content-with-header {
+  padding-top: calc(var(--tg-safe-top) + var(--tg-header-height) + 12px);
 }
 
 html.dark {
@@ -242,6 +255,7 @@ body {
   width: 86% !important;
   overflow: hidden !important;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+
 }
 
 .van-dialog__header {

@@ -1,13 +1,14 @@
 /**
  * src/features/check-in-out/model/useCheckInOut.ts
- * Бизнес-логика открытия и закрытия смены с нативной геопроверкой 50м и Telegram Haptics
+ * Бизнес-логика открытия и закрытия смены с нативной геопроверкой 150м и Telegram Haptics
  */
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { showSuccessToast, showFailToast, showToast, showConfirmDialog } from 'vant';
 import confetti from 'canvas-confetti';
 import { getBrowserLocation, validateCheckInRadius, useTelegramHaptic } from '@shared/lib';
-import type { LocationCheckResult } from '@shared/types';
+import { ALLOWED_RADIUS_METERS } from '@shared/config/constants';
+import type { LocationCheckResult, ShiftUi } from '@shared/types';
 import { useSessionStore } from '@entities/session';
 import { useShopStore } from '@entities/shop';
 import { useShiftStore, createShiftApi, closeShiftApi } from '@entities/shift';
@@ -37,7 +38,7 @@ export const useCheckInOut = () => {
 
     isCheckingLocation.value = true;
     try {
-      // 1. Убеждаемся, что данные кофейни загружены
+      // 1. Убеждаемся, что данные заведения загружены
       const shopId = sessionStore.assignedShopId || 'shop_astana_1';
       if (!shopStore.currentShop) {
         await shopStore.loadShop(shopId);
@@ -45,7 +46,7 @@ export const useCheckInOut = () => {
 
       const shopCoords = shopStore.shopCoordinates || { latitude: 51.1282, longitude: 71.4305 };
 
-      // 2. Получаем текущую геопозицию бариста нативным API
+      // 2. Получаем текущую геопозицию сотрудника нативным API
       const { coordinates, accuracy } = await getBrowserLocation();
 
       // Контроль погрешности: если погрешность > 100 метров — предупреждаем
@@ -57,8 +58,9 @@ export const useCheckInOut = () => {
         });
       }
 
-      // 3. Проверяем расстояние по формуле гаверсинусов (строгий порог 50м, без моков)
-      const validation = validateCheckInRadius(coordinates, shopCoords);
+      // 3. Проверяем расстояние по формуле гаверсинусов (строгий порог 150м, без моков)
+      const allowedRadius = shopStore.currentShop?.radius || ALLOWED_RADIUS_METERS;
+      const validation = validateCheckInRadius(coordinates, shopCoords, sessionStore.user?.name, allowedRadius);
       lastGeoResult.value = { ...validation, accuracy };
 
       // 4. Валидация допуска
@@ -73,18 +75,34 @@ export const useCheckInOut = () => {
 
       // 5. Создание смены в Firestore
       isOperatingShift.value = true;
+      const currentShopId = shopStore.currentShop?.id || sessionStore.assignedShopId || 'shop_astana_1';
       const newShiftId = await createShiftApi({
         userId: sessionStore.user.id,
         userName: sessionStore.user.name,
-        shopId,
+        shopId: currentShopId,
         checkInTimestamp: Date.now(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude
       });
 
-      // 6. Обновление локальных сторов
+      const shiftPayload: ShiftUi = {
+        id: newShiftId,
+        shopId: currentShopId,
+        status: 'open',
+        userId: sessionStore.user.id,
+        userName: sessionStore.user.name,
+        checkIn: new Date(),
+        checkOut: null,
+        createdAt: Date.now(),
+        isActive: true
+      };
+
+      // 1. Мгновенно обновляем стейт смены
+      shiftStore.activeShift = shiftPayload;
+      // 2. Обновляем shift_id в профиле пользователя
       sessionStore.setShiftId(newShiftId);
-      await shiftStore.syncShiftFromUser(shopId, newShiftId);
+      // 3. Запускаем слушатель документа смены
+      shiftStore.syncShiftFromUser(currentShopId, newShiftId);
 
       haptic.notification('success');
       showSuccessToast(t('shift.shiftStarted'));

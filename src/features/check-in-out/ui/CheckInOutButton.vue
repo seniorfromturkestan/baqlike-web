@@ -11,10 +11,6 @@
       >
         <span>{{ isCheckingLocation ? $t('shift.checkingGps') : $t('shift.startShift') }}</span>
       </AppButton>
-
-      <div class="flex items-center justify-center px-1 text-[11px] text-gray-500 dark:text-slate-400">
-        <span>{{ $t('shift.radiusCheck') }}</span>
-      </div>
     </div>
 
     <!-- Когда смена ОТКРЫТА: кнопка «Завершить смену» -->

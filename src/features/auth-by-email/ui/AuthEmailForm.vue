@@ -1,16 +1,20 @@
 <template>
   <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-gray-100 dark:border-slate-800 shadow-sm space-y-6 select-none transition-colors">
     <!-- Шапка формы -->
-    <div class="text-center space-y-2">
-      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand to-accent mx-auto flex items-center justify-center text-white shadow-md shadow-purple-500/20">
-        <Coffee class="w-6 h-6" />
+    <div class="text-center space-y-3">
+      <img
+        src="/logo-staff-baqlike.png"
+        alt="BaqLike Staff"
+        class="w-14 h-14 rounded-2xl shadow-md shadow-purple-500/15 mx-auto object-contain"
+      >
+      <div class="space-y-1">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-slate-100 tracking-tight">
+          {{ $t('auth.title') }}
+        </h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400">
+          {{ $t('auth.subtitle') }}
+        </p>
       </div>
-      <h2 class="text-xl font-bold text-gray-900 dark:text-slate-100 tracking-tight">
-        {{ $t('auth.title') }}
-      </h2>
-      <p class="text-xs text-gray-500 dark:text-slate-400">
-        {{ $t('auth.subtitle') }}
-      </p>
     </div>
 
     <!-- Форма входа по Email и паролю -->
@@ -71,7 +75,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Coffee } from 'lucide-vue-next';
 import { AppButton } from '@shared/ui';
 import { useSessionStore } from '@entities/session';
 
@@ -100,6 +103,9 @@ const handleSubmit = async () => {
     await sessionStore.loginWithEmail(emailInput.value.trim(), passwordInput.value);
     emit('success');
   } catch (err: unknown) {
+    if (err instanceof Error && (err.message === 'USER_NOT_FOUND' || err.message === 'ROLE_FORBIDDEN_ADMIN')) {
+      return;
+    }
     const msg = err instanceof Error ? err.message : t('auth.emailError');
     errorMessage.value = msg;
   } finally {

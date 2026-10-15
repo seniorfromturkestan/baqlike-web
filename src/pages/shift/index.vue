@@ -4,10 +4,10 @@
     <template #header>
       <div class="px-5 py-3 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl overflow-hidden bg-gradient-to-tr from-brand to-accent text-white font-bold text-sm flex items-center justify-center shadow-md shrink-0">
+          <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-tr from-brand to-accent text-white font-bold text-sm flex items-center justify-center shadow-md shrink-0">
             <img
-              v-if="sessionStore.user?.avatarUrl"
-              :src="sessionStore.user.avatarUrl"
+              v-if="sessionStore.userAvatar"
+              :src="sessionStore.userAvatar"
               alt="Avatar"
               class="w-full h-full object-cover"
             >
@@ -28,6 +28,10 @@
     <!-- Основной контент с Pull-to-Refresh -->
     <van-pull-refresh
       v-model="isRefreshing"
+      :pulling-text="$t('common.pullToRefresh')"
+      :loosing-text="$t('common.releaseToRefresh')"
+      :loading-text="$t('common.loading')"
+      :success-text="$t('common.refreshSuccess')"
       class="min-h-[calc(100vh-140px)]"
       @refresh="onRefresh"
     >
@@ -36,10 +40,10 @@
         <ShiftStatusCard />
 
         <!-- 2. Блок превью задач (когда смена открыта) -->
-        <div v-if="shiftStore.isOpen" class="space-y-3">
+        <div v-if="shiftStore.isShiftActive" class="space-y-3">
           <div class="flex items-center justify-between px-1">
             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {{ $t('shift.nearestTasks') }} ({{ taskStore.notDoneTasks.length }})
+              {{ $t('shift.nearestTasks') }} ({{ activeTasks.length }})
             </h3>
             <NuxtLink
               to="/tasks"
@@ -54,15 +58,39 @@
           <div v-auto-animate class="space-y-2">
             <div
               v-if="topTasks.length === 0"
-              class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 text-center text-xs text-gray-400 dark:text-slate-500 flex items-center justify-center gap-1.5 transition-colors"
+              class="py-6 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 text-center flex flex-col items-center justify-center transition-colors"
             >
               <template v-if="taskStore.totalCount === 0">
-                <ClipboardList class="w-4 h-4 text-gray-400 shrink-0" />
-                <span>{{ $t('tasks.emptyShiftTasks') }}</span>
+                <client-only>
+                  <Vue3Lottie
+                    :animation-data="noTasksChill"
+                    :height="140"
+                    :width="140"
+                    :loop="true"
+                    :auto-play="true"
+                  />
+                  <template #fallback>
+                    <div class="w-[140px] h-[140px]" />
+                  </template>
+                </client-only>                
+                <span class="text-xs font-bold text-gray-400 dark:text-slate-500 mt-6">{{ $t('tasks.emptyShiftTasks') }}</span>
               </template>
               <template v-else>
-                <CheckCircle2 class="w-4 h-4 text-emerald-500 shrink-0" />
-                <span>{{ $t('shift.allDone') }}</span>
+                <client-only>
+                  <Vue3Lottie
+                    :animation-data="baqlikeAnimation"
+                    :height="140"
+                    :width="140"
+                    :loop="true"
+                    :auto-play="true"
+                  />
+                  <template #fallback>
+                    <div class="w-[140px] h-[140px]" />
+                  </template>
+                </client-only>
+                <p class="text-xs font-semibold text-gray-700 dark:text-slate-300 mt-2">
+                  {{ $t('tasks.allCompleted') }}
+                </p>
               </template>
             </div>
 
@@ -89,7 +117,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { ChevronRight, CheckCircle2, ClipboardList } from 'lucide-vue-next';
+import { ChevronRight, ClipboardList } from 'lucide-vue-next';
+import baqlikeAnimation from '@/assets/animations/no-tasks.json';
+import noTasksChill from '@/assets/animations/no-tasks-chill.json';
 import { SafeLayout } from '@shared/ui';
 import { useTelegramHaptic } from '@shared/lib';
 import { useSessionStore } from '@entities/session';
@@ -108,8 +138,12 @@ const haptic = useTelegramHaptic();
 
 const isRefreshing = ref(false);
 
+const activeTasks = computed(() => {
+  return taskStore.tasks.filter((t) => t.status !== 'Approved' && t.status !== 'Rejected');
+});
+
 const topTasks = computed(() => {
-  return taskStore.notDoneTasks.slice(0, 3);
+  return activeTasks.value.slice(0, 3);
 });
 
 const isModalOpen = ref(false);

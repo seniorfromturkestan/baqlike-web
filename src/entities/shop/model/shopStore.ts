@@ -1,6 +1,6 @@
 /**
  * src/entities/shop/model/shopStore.ts
- * Pinia-стор данных привязанной кофейни
+ * Pinia-стор данных привязанного заведения
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
@@ -25,7 +25,7 @@ export const useShopStore = defineStore('shop', () => {
   });
 
   const shopName = computed<string>(() => {
-    return currentShop.value?.name || 'Кофейня BaqLike';
+    return currentShop.value?.name || 'Заведение BaqLike';
   });
 
   const shopAddress = computed<string>(() => {

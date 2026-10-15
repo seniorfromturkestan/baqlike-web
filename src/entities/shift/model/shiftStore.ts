@@ -1,16 +1,19 @@
 /**
  * src/entities/shift/model/shiftStore.ts
- * Pinia-стор активной смены бариста с персистентностью
+ * Pinia-стор активной смены сотрудника с персистентностью
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { doc, setDoc, type Unsubscribe } from 'firebase/firestore';
+import { getFirebaseFirestore } from '@shared/api';
 import type { ShiftUi } from '@shared/types';
 import { parseToTimestamp } from '@shared/lib/date';
+import { useSessionStore } from '@entities/session';
 import { fetchShiftById, findActiveUserShift, subscribeToShift } from '../api/shiftApi';
-import type { Unsubscribe } from 'firebase/firestore';
 
 export const useShiftStore = defineStore('shift', () => {
   const activeShift = ref<ShiftUi | null>(null);
+  const currentShift = activeShift;
   const shiftHistory = ref<ShiftUi[]>([]);
   const loading = ref<boolean>(false);
   const error = ref<string | null>(null);
@@ -21,9 +24,12 @@ export const useShiftStore = defineStore('shift', () => {
   // Геттеры
   // ==========================================
 
-  const isOpen = computed<boolean>(() => {
-    return Boolean(activeShift.value?.checkIn && !activeShift.value?.checkOut);
+  const isShiftActive = computed<boolean>(() => {
+    if (!activeShift.value) return false;
+    return activeShift.value.status === 'open' || !activeShift.value.status;
   });
+
+  const isOpen = computed<boolean>(() => isShiftActive.value);
 
   const workedDurationMs = computed<number>(() => {
     if (!activeShift.value?.checkIn) return 0;
@@ -38,6 +44,29 @@ export const useShiftStore = defineStore('shift', () => {
   });
 
   // ==========================================
+  // Вспомогательный сброс shift_id у пользователя
+  // ==========================================
+
+  const resetUserShift = async () => {
+    activeShift.value = null;
+    const sessionStore = useSessionStore();
+    sessionStore.setShiftId(null);
+    if (sessionStore.user) {
+      sessionStore.user.shiftId = null;
+      (sessionStore.user as any).shift_id = null;
+    }
+    const userId = sessionStore.user?.id;
+    if (userId) {
+      try {
+        const firestore = getFirebaseFirestore();
+        await setDoc(doc(firestore, 'Users', userId), { shift_id: null }, { merge: true });
+      } catch (err) {
+        console.warn('[ShiftStore] Failed to reset shift_id in Users:', err);
+      }
+    }
+  };
+
+  // ==========================================
   // Действия (Actions)
   // ==========================================
 
@@ -48,7 +77,7 @@ export const useShiftStore = defineStore('shift', () => {
     error.value = null;
     try {
       const shift = await fetchShiftById(shopId, shiftId);
-      if (shift) {
+      if (shift && (shift.status === 'open' || !shift.status) && !shift.checkOut) {
         activeShift.value = shift;
       }
       return shift;
@@ -62,10 +91,14 @@ export const useShiftStore = defineStore('shift', () => {
   };
 
   /**
-   * Восстановление и real-time синхронизация смены из профиля пользователя
+   * Восстановление и real-time синхронизация смены из профиля пользователя.
+   * Если документ не найден или статус !== 'open' — сбрасывает shift_id в Users и сторе.
    */
   const syncShiftFromUser = async (shopId: string, userShiftId?: string | null): Promise<void> => {
-    if (!shopId || !userShiftId) return;
+    if (!shopId || !userShiftId) {
+      activeShift.value = null;
+      return;
+    }
 
     if (shiftUnsubscribe) {
       shiftUnsubscribe();
@@ -73,14 +106,30 @@ export const useShiftStore = defineStore('shift', () => {
     }
 
     // 1. Прямая загрузка из Firestore
-    await loadShift(shopId, userShiftId);
+    const shift = await loadShift(shopId, userShiftId);
+
+    // Если документ не найден и нет локально установленной смены с этим id
+    if (!shift) {
+      if (activeShift.value?.id !== userShiftId) {
+        await resetUserShift();
+      }
+      return;
+    }
+
+    // Если смена закрыта
+    if (shift.status === 'closed' || shift.checkOut) {
+      await resetUserShift();
+      return;
+    }
+
+    activeShift.value = shift;
 
     // 2. Real-time подписка на изменения документа смены
-    shiftUnsubscribe = subscribeToShift(shopId, userShiftId, (updatedShift) => {
-      if (updatedShift) {
+    shiftUnsubscribe = subscribeToShift(shopId, userShiftId, async (updatedShift) => {
+      if (updatedShift && (updatedShift.status === 'open' || !updatedShift.status) && !updatedShift.checkOut) {
         activeShift.value = updatedShift;
-      } else {
-        activeShift.value = null;
+      } else if (updatedShift && (updatedShift.status === 'closed' || updatedShift.checkOut)) {
+        await resetUserShift();
       }
     });
   };
@@ -92,8 +141,10 @@ export const useShiftStore = defineStore('shift', () => {
     error.value = null;
     try {
       const shift = await findActiveUserShift(shopId, userId);
-      if (shift) {
+      if (shift && shift.status === 'open') {
         activeShift.value = shift;
+      } else {
+        activeShift.value = null;
       }
       return shift;
     } catch (err: unknown) {
@@ -119,10 +170,12 @@ export const useShiftStore = defineStore('shift', () => {
 
   return {
     activeShift,
+    currentShift,
     shiftHistory,
     loading,
     error,
     isOpen,
+    isShiftActive,
     workedDurationMs,
     shiftId,
     loadShift,

@@ -17,7 +17,7 @@
             :class="isActive('/shift') ? 'stroke-[2.5]' : 'stroke-2'"
           />
           <span
-            v-if="shiftStore.isOpen"
+            v-if="shiftStore.isShiftActive"
             class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse"
           />
         </div>

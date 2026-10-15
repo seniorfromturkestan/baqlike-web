@@ -35,6 +35,8 @@ export interface LocationCheckResult {
 
 export type TaskStatus = 'Not_Done' | 'In_Review' | 'Approved' | 'Rejected';
 
+export type TaskDisplayStatus = 'Active' | 'Overdue' | 'In_Review' | 'Approved' | 'ApprovedOverdue' | 'Rejected';
+
 export type TaskType = 'checkbox' | 'photo';
 
 export type ShiftStatus = 'Open' | 'Closed';
@@ -57,7 +59,7 @@ export interface UserFirebase {
   telegram_id?: number | null;
   telegram_username?: string | null;
   avatar_url?: string | null;
-  created_at?: any;
+  created_at?: number | any;
 }
 
 /**
@@ -77,10 +79,20 @@ export interface ShiftFirebase {
   id: string;
   user_id: string;
   user_name?: string;
-  check_in: any;
-  check_out: any;
+  check_in: {
+    latitude?: number;
+    longitude?: number;
+    timestamp: number;
+  } | any;
+  check_out: {
+    latitude?: number;
+    longitude?: number;
+    timestamp: number;
+  } | any | null;
   status?: string;
   date?: string;
+  created_at?: number;
+  updated_at?: number;
 }
 
 /**
@@ -92,6 +104,9 @@ export interface TaskResultFirebase {
   title: string;
   type: TaskType;
   status: TaskStatus;
+  date?: string; // YYYY-MM-DD
+  is_overdue?: boolean;
+  delay_minutes?: number;
   timestamp?: number; // epoch milliseconds (start of day)
   expected_finish_time: number; // epoch milliseconds
   actual_finish_time: number | null; // epoch milliseconds
@@ -99,6 +114,7 @@ export interface TaskResultFirebase {
   user_name: string | null;
   photo_url: string | null;
   review_comment: string | null;
+  reviewed_at?: number | any;
 }
 
 // ==========================================
@@ -123,6 +139,8 @@ export interface ShiftUi {
   userName?: string;
   checkIn: Date | null;
   checkOut: Date | null;
+  status?: string;
+  createdAt?: number;
   isActive?: boolean;
 }
 
@@ -132,6 +150,11 @@ export interface TaskResultUi {
   title: string;
   type: TaskType;
   status: TaskStatus;
+  date?: string; // YYYY-MM-DD
+  isOverdue?: boolean;
+  is_overdue?: boolean;
+  delayMinutes?: number;
+  delay_minutes?: number;
   timestamp?: number;
   expectedFinishTime: number;
   actualFinishTime: number | null;
@@ -139,6 +162,7 @@ export interface TaskResultUi {
   userName: string | null;
   photoUrl: string | null;
   reviewComment: string | null;
+  reviewedAt?: number | null;
 }
 
 // ==========================================
@@ -199,4 +223,4 @@ export interface FirebaseClientConfig {
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
-export type StatusBadgeType = TaskStatus | ShiftStatus;
+export type StatusBadgeType = TaskStatus | TaskDisplayStatus | ShiftStatus;
